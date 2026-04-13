@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary-hex: #3b82f6;
+  --color-secondary-hex: #10b981;
+  --color-accent-hex: #8b5cf6;
+}
+
+@layer base {
+  body {
+    background-color: #030712;
+    color: #f9fafb;
+    font-family: 'Inter', sans-serif;
+  }
+}
