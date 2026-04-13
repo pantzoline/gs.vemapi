@@ -1,0 +1,31 @@
+## .NET
+*.user
+*.suo
+.vs/
+bin/
+obj/
+*.dll
+*.pdb
+*.nupkg
+*.snupkg
+TestResults/
+
+## Docker
+.docker/
+
+## Environments
+.env
+.env.local
+.env.*.local
+
+## OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## JetBrains Rider
+.idea/
+*.sln.iml
+
+## VS Code
+.vscode/

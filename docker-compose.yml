@@ -1,0 +1,85 @@
+version: "3.9"
+
+services:
+
+  # ===[ PostgreSQL 16 ]===
+  postgres:
+    image: postgres:16-alpine
+    container_name: corear_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: corear_admin
+      POSTGRES_PASSWORD: CHANGE_ME_IN_PRODUCTION
+      POSTGRES_DB: corear
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Executa as migrations na inicialização
+      - ./CoreAr.Ledger/Infrastructure/Data/Migrations/InitLedgerSchema.sql:/docker-entrypoint-initdb.d/01_ledger.sql
+      - ./CoreAr.Crm/Infrastructure/Data/Migrations/InitCrmSchema.sql:/docker-entrypoint-initdb.d/02_crm.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U corear_admin -d corear"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===[ Redis 7 ]===
+  redis:
+    image: redis:7-alpine
+    container_name: corear_redis
+    restart: unless-stopped
+    command: redis-server --requirepass CHANGE_ME_IN_PRODUCTION
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===[ RabbitMQ 3 com Management UI ]===
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: corear_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: corear_admin
+      RABBITMQ_DEFAULT_PASS: CHANGE_ME_IN_PRODUCTION
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI → http://localhost:15672
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ===[ CoreAr.Identity — Serviço de Autenticação ]===
+  identity-api:
+    build:
+      context: ./CoreAr.Identity
+      dockerfile: Dockerfile
+    container_name: corear_identity
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5001
+      - ConnectionStrings__IdentityDb=Host=postgres;Port=5432;Database=corear;Username=corear_admin;Password=CHANGE_ME_IN_PRODUCTION
+      - Jwt__SecretKey=${JWT_SECRET_KEY}
+      - Jwt__Issuer=CoreAr.Identity
+      - Jwt__Audience=CoreAr.Apps
+    ports:
+      - "5001:5001"
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
